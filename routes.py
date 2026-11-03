@@ -1,52 +1,57 @@
-from fastapi import APIRouter, HTTPException
-from pydanticmodel import TaskCreate, TaskResponse
-import arraydb 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+import models
+import schemas
+from database import get_db
 
-# Crie um roteador em vez de usar o app principal, já que eu fiz em arquivos separados
 router = APIRouter()
 
+#a diferença, é que agora tem um banco de dados para salvar as alterações, ao inves de salvar pelo dicionario.
 
-@router.post("/tasks/", response_model=TaskResponse, status_code=201)
-def create_task(task: TaskCreate):
-    new_task = TaskResponse(id=arraydb.current_id, **task.model_dump())
-    arraydb.tasks_db[arraydb.current_id] = new_task
-    arraydb.current_id += 1
-    return new_task
+@router.post("/tasks/", response_model=schemas.TaskResponse, status_code=201)
+def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
+    db_task = models.Task(**task.model_dump())
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
-    # baseando na documentação do fastapi, eu criei essa logica usando o model_dump para transformar o objeto do pydantic e atribuindo um id a task que foi criada e depois faço o incremento do current id para manter a logica eu eu expliquei no arquivo arraydb.py
 
-@router.get("/tasks/", response_model=list[TaskResponse])
-def read_tasks(skip: int = 0, limit: int = 10):
-    tasks_list = list(arraydb.tasks_db.values())
-    return tasks_list[skip : skip + limit]
+@router.get("/tasks/", response_model=list[schemas.TaskResponse])
+def read_tasks(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    tasks = db.query(models.Task).offset(skip).limit(limit).all()
+    return tasks
 
-    # esse get serve para listar todos as tarefas que voce possue no momento, podendo ignorar alguma tarefa(alterando a variavel skip) ou aumentar o limite de quantas tarefas seram exibidas(mudando a variavel limit)
 
-@router.get("/tasks/{task_id}", response_model=TaskResponse)
-def read_task(task_id: int):
-    if task_id not in arraydb.tasks_db:
+@router.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def read_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if task is None:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-    return arraydb.tasks_db[task_id]
+    return task
 
-    # aqui basicamente ele faz uma busca no "banco de dados", baseando-se no id que o usuario colocar, se não achar o id que o usuario colocou, é gerado uma mensagem de erro
 
-@router.put("/tasks/{task_id}", response_model=TaskResponse)
-def update_task(task_id: int, task: TaskCreate):
-    if task_id not in arraydb.tasks_db:
+@router.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def update_task(task_id: int, task: schemas.TaskCreate, db: Session = Depends(get_db)):
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if db_task is None:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-         
-    updated_task = TaskResponse(id=task_id, **task.model_dump())
-    arraydb.tasks_db[task_id] = updated_task
-    return updated_task
+    
+    # Atualiza apenas os campos enviados no modelo
+    for key, value in task.model_dump().items():
+        setattr(db_task, key, value)
+        
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
-    # por meio do Id, ele identifica uma tarefa, e permite mudar o titulo, descrição e o booleano(True ou False) se está concluido ou não
 
 @router.delete("/tasks/{task_id}")
-def delete_task(task_id: int):
-    if task_id not in arraydb.tasks_db:
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if db_task is None:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-         
-    del arraydb.tasks_db[task_id]
+    
+    db.delete(db_task)
+    db.commit()
     return {"message": "Tarefa excluída com sucesso"}
-
-    # deleta a tarefa pelo id, caso não encontrar o id, ele retorna o status_code 404 e a mensagem de erro avisando que tem

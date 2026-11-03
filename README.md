@@ -1,19 +1,31 @@
 ## Clone o repositório
 
 ```bash
-git clone https://github.com/FernandoTinno/AtividadeBackend-1.git
+git clone https://github.com/FernandoTinno/AtividadeBackend-2.git
 ```
 
 **Mude para a pasta do projeto**
 
 ```bash
-cd AtividadeBackend-1
+cd AtividadeBackend-2
+```
+
+**Crie um ambiente virtual**
+
+```bash
+venv venv
+```
+
+**Crie um ambiente virtual**
+
+```bash
+venv\Scripts\Activate.ps1
 ```
 
 **Instale as dependências necessárias**
 
 ```bash
-py -m pip install fastapi uvicorn
+pip install -r requirements.txt
 ```
 
 **Execute a aplicação**
