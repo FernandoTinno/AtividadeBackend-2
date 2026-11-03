@@ -10,10 +10,16 @@ git clone https://github.com/FernandoTinno/AtividadeBackend-2.git
 cd AtividadeBackend-2
 ```
 
+**Acesse o diretório**
+
+```bash
+code . -r
+```
+
 **Crie um ambiente virtual**
 
 ```bash
-venv venv
+py -m venv venv
 ```
 
 **Crie um ambiente virtual**
@@ -26,6 +32,12 @@ venv\Scripts\Activate.ps1
 
 ```bash
 pip install -r requirements.txt
+```
+
+**Crie o Banco de dados**
+
+```bash
+alembic upgrade head
 ```
 
 **Execute a aplicação**
